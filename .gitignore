@@ -1,0 +1,5 @@
+!data/keypoint/person_keypoints_default.json
+data/
+yolov8*.pt
+runs
+outputs

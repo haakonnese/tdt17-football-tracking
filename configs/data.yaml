@@ -1,0 +1,9 @@
+path: ../data  # dataset root dir
+train: train
+val: train
+test: test
+
+# Classes
+names:
+  0: ball
+  1: player
