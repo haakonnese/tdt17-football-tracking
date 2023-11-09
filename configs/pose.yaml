@@ -1,6 +1,6 @@
 path: ../data/keypoint  # dataset root dir
 train: train
-val: train
+val: val
 kpt_shape: [7, 3]
 # Classes
 names:

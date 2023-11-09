@@ -21,6 +21,37 @@ class Point:
 
 
 @dataclass(frozen=True)
+class KeyPoints:
+    x: List[float]
+    y: List[float]
+    visible: List[float]
+    
+    @property
+    def int_xy_tuple(self, idx) -> Tuple[int, int]:
+        return int(self.x[idx]), int(self.y[idx])
+    
+    @classmethod
+    def from_dict(cls, keypoints: Dict[str, Any]) -> KeyPoints:
+        return KeyPoints(
+            x=keypoints["x"],
+            y=keypoints["y"],
+            visible=keypoints["visible"]
+        )
+    
+    def __getitem__(self, idx):
+        return self.x[idx], self.y[idx], self.visible[idx]
+
+    def __iter__(self):
+        for i in range(len(self.x)):
+            yield self[i]
+    
+    def dict(self):
+        return {"x": self.x, "y": self.y, "visible": self.visible}
+    
+    def __str__(self):
+        return str(self.dict())
+
+@dataclass(frozen=True)
 class Rect:
     x: float
     y: float
@@ -85,6 +116,7 @@ class Detection:
     class_name: str
     confidence: float
     tracker_id: Optional[int] = None
+    distance: Optional[float] = None
 
     @classmethod
     def from_results(cls, preds: list[dict], names: list[str]) -> List[Detection]:
@@ -109,6 +141,64 @@ class Detection:
                 confidence=confidence,
                 tracker_id=int(pred['track_id'])
             ))
+        return result
+
+
+@dataclass
+class KeypointDetection:
+    name: str
+    class_id: int
+    confidence: float
+    box: Rect
+    keypoints: KeyPoints
+
+    @classmethod
+    def from_results(cls, preds: list[dict], names: list[str]) -> List[KeypointDetection]:
+        result = []
+        highest_confidence = 0
+        highest_confidence_idx = -1
+        for i, pred in enumerate(preds):
+            if pred['confidence'] > highest_confidence:
+                highest_confidence = pred['confidence']
+                highest_confidence_idx = i
+        if highest_confidence_idx == -1:
+            return result
+        pred = preds[highest_confidence_idx]
+        class_id=int(pred['class'])
+        x_min = float(pred['box']['x1'])
+        y_min = float(pred['box']['y1'])
+        x_max = float(pred['box']['x2'])
+        y_max = float(pred['box']['y2'])
+        confidence = float(pred['confidence'])
+        result.append(KeypointDetection(
+            name=names[class_id],
+            class_id=class_id,
+            confidence=confidence,
+            box=Rect(
+                x=x_min,
+                y=y_min,
+                width=float(x_max - x_min),
+                height=float(y_max - y_min)
+            ),
+            keypoints=KeyPoints.from_dict(pred['keypoints'])
+        ))
+        return result
+    
+    @classmethod
+    def from_dict(cls, keypoints: Dict[str, Any], names: list[str]) -> List[KeypointDetection]:
+        result = []
+        result.append(KeypointDetection(
+            name=names[keypoints["class_id"]],
+            class_id=keypoints["class_id"],
+            confidence=keypoints["confidence"],
+            box=Rect(
+                x=keypoints["box"]["x"],
+                y=keypoints["box"]["y"],
+                width=keypoints["box"]["width"],
+                height=keypoints["box"]["height"]
+            ),
+            keypoints=KeyPoints.from_dict(keypoints["keypoints"])
+        ))
         return result
 
 
@@ -179,6 +269,9 @@ def draw_ellipse(image: np.ndarray, rect: Rect, color: Color, thickness: int = 2
     )
     return image
 
+def draw_point(image: np.ndarray, point: Point, color: Color, thickness: int = 2) -> np.ndarray:
+    cv2.circle(image, point.int_xy_tuple, thickness, color.bgr_tuple, -1)
+    return image
 
 # base annotator
   
@@ -204,5 +297,43 @@ class BaseAnnotator:
                 color=self.colors[detection.class_id],
                 thickness=self.thickness
             )
+            if detection.distance is not None:
+                annotated_image = draw_text(
+                    image=annotated_image,
+                    anchor=detection.rect.bottom_center,
+                    text=f"{detection.distance:.2f}m",
+                    color=self.colors[detection.class_id],
+                    thickness=self.thickness
+                )
         return annotated_image
     
+@dataclass
+class KeypointAnnotator:
+    colors: List[Color]
+    thickness: int
+
+    def annotate(self, image: np.ndarray, detections: List[KeypointDetection]) -> np.ndarray:
+        annotated_image = image.copy()
+        for detection in detections:
+            for i, (x, y, visible) in enumerate(detection.keypoints):
+                if visible > 0.5:
+                    annotated_image = draw_point(
+                        image=annotated_image,
+                        point=Point(x=x, y=y),
+                        color=self.colors[i],
+                        thickness=self.thickness
+                    )
+        return annotated_image    
+    
+    def annotate_points(self, image, keypoints) -> np.ndarray:
+        keypoints = KeyPoints.from_dict(keypoints)
+        anntated_image = image.copy()
+        for i, (x, y, visible) in enumerate(keypoints):
+            if visible > 0.5:
+                anntated_image = draw_point(
+                    image=anntated_image,
+                    point=Point(x=x, y=y),
+                    color=self.colors[i],
+                    thickness=self.thickness
+                )
+        return anntated_image

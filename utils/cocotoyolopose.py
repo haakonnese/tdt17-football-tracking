@@ -66,8 +66,8 @@ def convert_keypoints2_list(keypoints, img_width, img_height):
     list_1 = []
     num_4 = 0
     for i in range(numOfKpts):
-        list_1.append(float(arry_x[num_4]))
-        list_1.append(float(arry_y[num_4]))
+        list_1.append(float(min(1.0, arry_x[num_4])))
+        list_1.append(float(min(1.0, arry_y[num_4])))
         list_1.append(float(arry_v[num_4]))
         num_4 += 1
     return list_1
