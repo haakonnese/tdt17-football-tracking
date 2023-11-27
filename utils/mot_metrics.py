@@ -1,7 +1,7 @@
 import argparse
 
 
-def motMetricsEnhancedCalculator(gtSource, tSource):
+def motMetricsEnhancedCalculator(gtSource, tSource, only_calculate_class=None):
     # import required packages
     import motmetrics as mm
     import numpy as np
@@ -22,9 +22,12 @@ def motMetricsEnhancedCalculator(gtSource, tSource):
         # select id, x, y, width, height for current frame
         # required format for distance calculation is X, Y, Width, Height \
         # We already have this format
-        gt_dets = gt[gt[:,0]==frame,1:6] # select all detections in gt
-        t_dets = t[t[:,0]==frame,1:6] # select all detections in t
-
+        if only_calculate_class is not None:
+            gt_dets = gt[(gt[:,0]==frame) & (gt[:,7]==only_calculate_class),1:6] # select all detections in gt
+            t_dets = t[(t[:,0]==frame) & (t[:,7]==only_calculate_class),1:6] # select all detections in t
+        else:
+            gt_dets = gt[gt[:,0]==frame,1:6] # select all detections in gt
+            t_dets = t[t[:,0]==frame,1:6]
         C = mm.distances.iou_matrix(gt_dets[:,1:], t_dets[:,1:], \
                                     max_iou=0.5) # format: gt, t
 
@@ -60,6 +63,7 @@ def motMetricsEnhancedCalculator(gtSource, tSource):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Calculate MOT metrics')
     parser.add_argument('--gt', type=str, default="data/from_idun/3_test_1min_hamkam_from_start/gt/gt.txt", help='Ground truth file')
-    parser.add_argument('--target', type=str, default="outputs/mot_result.txt", help='Tracking output file')
+    parser.add_argument('--target', type=str, default="outputs/mot_result_3_test_1min_hamkam_from_start.txt", help='Tracking output file')
+    parser.add_argument('--class-label', type=int, default=None)
     args = parser.parse_args()
-    motMetricsEnhancedCalculator(args.gt, args.target)
+    motMetricsEnhancedCalculator(args.gt, args.target, args.class_label)

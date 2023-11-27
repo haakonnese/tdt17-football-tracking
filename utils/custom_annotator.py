@@ -329,7 +329,7 @@ class KeypointAnnotator:
         keypoints = KeyPoints.from_dict(keypoints)
         anntated_image = image.copy()
         for i, (x, y, visible) in enumerate(keypoints):
-            if visible > 0.5:
+            if visible > 0.95:
                 anntated_image = draw_point(
                     image=anntated_image,
                     point=Point(x=x, y=y),

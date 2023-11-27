@@ -1,5 +1,7 @@
-!data/keypoint/person_keypoints_default.json
-data/
+data/*
 yolov8*.pt
 runs
 outputs
+!data/keypoint
+data/keypoint/*
+!data/keypoint/field_keypoints.json

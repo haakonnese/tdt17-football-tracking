@@ -15,7 +15,7 @@ kptsInfo  = numOfKpts * 3
 
 parser.add_argument(
     "--coco_json_path",
-    default="/cluster/work/haaknes/tdt17/yolov8/data/keypoint/person_keypoints_default.json",
+    default="/cluster/work/haaknes/tdt17/yolov8/data/keypoint/field_keypoints.json",
     type=str,
     help="input: coco format(json)",
 )

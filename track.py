@@ -4,10 +4,8 @@ from utils.custom_annotator import BaseAnnotator, Detection, Color, KeypointAnno
 import cv2
 import numpy as np
 from utils.mot_metrics import motMetricsEnhancedCalculator
+from utils.case import VIDEO, video
 
-VIDEO = "1_train-val_1min_aalesund_from_start"
-VIDEO = "2_train-val_1min_after_goal"
-VIDEO = "3_test_1min_hamkam_from_start"
 abs_positions = np.array([[52.5, 70-25.85, 0], [52.5, 70-44.15, 0], [52.5, 70-70, 0], [43.35, 70-35, 0], [61.65, 70-35, 0]], dtype=np.float32)
 model = YOLO("runs/detect/train7/weights/last.pt")
 annotator = BaseAnnotator(colors=[Color(255, 255, 0), Color(0, 255, 255)], thickness=2)
@@ -36,10 +34,9 @@ def focalLength_to_camera_matrix(focalLenght, image_size):
         [0, 0, 1],
     ])
     return K
+camera_matrix = focalLength_to_camera_matrix(1, (1920, 1080))
 
 for i, result in enumerate(results):
-    # if i > 50:
-        # break
     result_dict = json.loads(result.tojson())
     for res in result_dict:
         motoutput += f"{i+1},{res['track_id']},{res['box']['x1']},{res['box']['y1']},{res['box']['x2']-res['box']['x1']},{res['box']['y2']-res['box']['y1']},1,{int(res['class'])+1},1.0\n"
@@ -60,21 +57,19 @@ for i, result in enumerate(results):
         transform = []
         abs_pos = []
         for j in range(5):
-            if visible[j] > 0.5:
+            if visible[j] > 0.95:
                 transform.append([x[j], y[j]])
                 abs_pos.append(abs_positions[j])
-        if len(transform) < 3:
+        if len(transform) < 4:
             pass
         else:
             transform = np.array(transform, dtype=np.float32)
             abs_pos = np.array(abs_pos, dtype=np.float32)
-            # get the transformation matrix from point 0, 2, 3 and 4 to the football field positions
-            # transform = np.array([[x[0], y[0]], [x[1], y[1]] [x[2], y[2]], [x[3], y[3]], [x[4], y[4]]], dtype=np.float32)
-            # M = cv2.getPerspectiveTransform(transform, abs_positions)
-            # M_scaled = cv2.getPerspectiveTransform(transform, abs_positions*30)
-            # get the bottom center of each player detection and transform it to the football field position
-            camera_matrix = focalLength_to_camera_matrix(1, (1920, 1080))
-            success, rotation_vector, translation_vector, _ = cv2.solvePnPRansac(abs_pos, transform, camera_matrix, None, None, None, False)
+            # solve pnp using all the points that are visible and have absolute positions in the field
+            # if len(transform) == 3:
+                # success, rotation_vector, translation_vector = cv2.solveP3P(abs_pos, transform, camera_matrix, None, flags=cv2.SOLVEPNP_P3P)
+            # else:
+            success, rotation_vector, translation_vector = cv2.solvePnP(abs_pos, transform, camera_matrix, None, None, None, False, cv2.SOLVEPNP_ITERATIVE)
             if success:
                 warp = True
                 for detection in detections:
@@ -104,7 +99,10 @@ for i, result in enumerate(results):
                             # calculate the distance between the previous position and the current position
                             if detection.tracker_id not in run_distance:
                                 run_distance[detection.tracker_id] = 0
-                            run_distance[detection.tracker_id] += np.sqrt((prev_pos[detection.tracker_id][0] - points[index][0])**2 + (prev_pos[detection.tracker_id][1] - points[index][1])**2)
+                            distance_run = np.sqrt((prev_pos[detection.tracker_id][0] - points[index][0])**2 + (prev_pos[detection.tracker_id][1] - points[index][1])**2)
+                            if distance_run > 0.4:
+                                distance_run = 0.4
+                            run_distance[detection.tracker_id] += distance_run
                             prev_pos[detection.tracker_id] = points[index]
                     else:
                         negative_index += 1  # if a ball, remove 1 from index
@@ -136,7 +134,10 @@ for key in run_distance:
 print(total_distance)
 with open(f"outputs/mot_result_{VIDEO}.txt", "w") as f:
     f.write(motoutput)
-motMetricsEnhancedCalculator(f"data/from_idun/{VIDEO}/gt/gt.txt", f"outputs/mot_result_{VIDEO}.txt")
+if video != 4:   
+    motMetricsEnhancedCalculator(f"data/from_idun/{VIDEO}/gt/gt.txt", f"outputs/mot_result_{VIDEO}.txt", 1)
+    motMetricsEnhancedCalculator(f"data/from_idun/{VIDEO}/gt/gt.txt", f"outputs/mot_result_{VIDEO}.txt", 2)
+    motMetricsEnhancedCalculator(f"data/from_idun/{VIDEO}/gt/gt.txt", f"outputs/mot_result_{VIDEO}.txt")
 
 
 

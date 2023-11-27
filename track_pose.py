@@ -2,10 +2,7 @@ from ultralytics import YOLO
 import json
 from utils.custom_annotator import Color, KeypointAnnotator, KeypointDetection
 import cv2
-VIDEO = "1_train-val_1min_aalesund_from_start"
-VIDEO = "2_train-val_1min_after_goal"
-VIDEO = "3_test_1min_hamkam_from_start"
-
+from utils.case import VIDEO, video
 model = YOLO('/cluster/work/haaknes/tdt17/yolov8/runs/pose/train22/weights/last.pt')
 annotator = KeypointAnnotator(colors=[Color(255, 255, 0), 
                                       Color(0, 255, 255),
