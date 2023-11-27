@@ -1,4 +1,6 @@
 ultralytics==8.0.207
 motmetrics==1.4.0
 seaborn==0.13.0
+sahi==0.11.15
+supervision==0.16.0
 ```
